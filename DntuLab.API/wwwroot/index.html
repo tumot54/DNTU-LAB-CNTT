@@ -1885,7 +1885,7 @@ function ManagerView(S) {
 
 
 /* ---------- Ket noi DntuLab.API ---------- */
-const API_BASE = "http://localhost:5266";
+const API_BASE = "https://dntu-lab-cntt.onrender.com";
 const apiFetch = async (path, options = {}, token = localStorage.getItem("dntulab_access_token")) => {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
