@@ -226,11 +226,8 @@ if (seedEnabled)
 // 7. CONFIGURE HTTP REQUEST PIPELINE
 // ======================================================
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Render sử dụng HTTPS ở lớp proxy phía trước.
 // Không chuyển hướng HTTP sang HTTPS tại ứng dụng.
