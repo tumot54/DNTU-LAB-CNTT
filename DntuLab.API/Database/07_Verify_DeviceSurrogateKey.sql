@@ -22,11 +22,11 @@ SELECT
     d."Id",
     d."TrangThai"
 FROM public."ThietBi" d
-WHERE d."MaPhong" IN ('AIHUB', 'AIBOT')
+WHERE d."MaPhong" IN ('AIHUB', 'AILAB')
   AND d."MaThietBi" IN ('AI-KIT01', 'AI-KIT02', 'AI-KIT03')
 ORDER BY d."MaPhong", d."MaThietBi";
 
 -- 4. Kiem tra ma phong AI
-SELECT COUNT(*) AS "SoPhongAIBOTCu"
+SELECT COUNT(*) AS "SoPhongAILAB"
 FROM public."Phong"
 WHERE "MaPhong" = 'AILAB';

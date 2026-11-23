@@ -6,7 +6,7 @@ namespace DntuLab.API.Migrations;
 
 /// <summary>
 /// Chuyển định danh thiết bị từ MaThietBi sang Id; mã hiển thị chỉ duy nhất trong từng phòng.
-/// Migration giữ nguyên dữ liệu Ticket/GhiNhanTam bằng cách ánh xạ theo mã và phòng của lịch.
+/// Migration lịch sử: giữ nguyên dữ liệu Ticket và GhiNhanTam trong giai đoạn chuyển khóa thiết bị. GhiNhanTam được loại bỏ ở migration cuối.
 /// </summary>
 public partial class DeviceSurrogateKey : Migration
 {

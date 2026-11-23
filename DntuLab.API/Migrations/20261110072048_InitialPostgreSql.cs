@@ -67,8 +67,8 @@ namespace DntuLab.API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Phong", x => x.MaPhong);
-                    table.CheckConstraint("CK_Phong_Cum", "\"Cum\" IN ('F', 'G', 'AIBOT')");
-                    table.CheckConstraint("CK_Phong_Loai", "\"LoaiPhong\" IN ('PC', 'BYOD', 'Lab AI')");
+                    table.CheckConstraint("CK_Phong_Cum", "\"Cum\" IN ('F', 'G', 'AI')");
+                    table.CheckConstraint("CK_Phong_Loai", "\"LoaiPhong\" IN ('PC', 'BYOD', 'Lab AI', 'CISCO')");
                     table.CheckConstraint("CK_Phong_SucChua", "\"SucChua\" > 0");
                 });
 

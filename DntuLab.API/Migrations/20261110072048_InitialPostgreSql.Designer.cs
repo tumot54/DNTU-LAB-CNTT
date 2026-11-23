@@ -255,9 +255,9 @@ namespace DntuLab.API.Migrations
 
                     b.ToTable("Phong", t =>
                         {
-                            t.HasCheckConstraint("CK_Phong_Cum", "\"Cum\" IN ('F', 'G', 'AIBOT')");
+                            t.HasCheckConstraint("CK_Phong_Cum", "\"Cum\" IN ('F', 'G', 'AI')");
 
-                            t.HasCheckConstraint("CK_Phong_Loai", "\"LoaiPhong\" IN ('PC', 'BYOD', 'Lab AI')");
+                            t.HasCheckConstraint("CK_Phong_Loai", "\"LoaiPhong\" IN ('PC', 'BYOD', 'Lab AI', 'CISCO')");
 
                             t.HasCheckConstraint("CK_Phong_SucChua", "\"SucChua\" > 0");
                         });

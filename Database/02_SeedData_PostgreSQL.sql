@@ -1,34 +1,54 @@
--- DNTULAB PostgreSQL - Seed danh muc phong va thiet bi demo
--- Dieu kien: da ap dung EF Core migration va chay 01A_Rename_AILAB_to_AIBOT.sql.
--- Khong xoa du lieu. Upsert thong tin 9 phong da chot; bo qua thiet bi da ton tai
--- theo UNIQUE (MaPhong, MaThietBi).
+
+-- DNTULAB PostgreSQL
+-- 02_SeedData_PostgreSQL.sql
+-- Seed danh muc 9 phong va thiet bi demo.
+--
+-- Yeu cau:
+-- Da ap dung 5 EF Core migrations.
+-- Ma phong AI chuan la AIHUB va AIBOT.
+-- Cum AI giu gia tri 'AI' theo CHECK constraint hien tai.
+-- Khong xoa du lieu hien co.
 --
 -- Danh muc 9 phong:
--- AIHUB (30), AIBOT (80), F507-F509 (40/phong), G201-G204 (65/phong).
--- Cum AI duoc luu la AIBOT de khop CHECK constraint trong Backend hien tai:
--- CK_Phong_Cum IN ('F','G','AIBOT').
--- F507-F509 van seed 50 PC/phong; day la so thiet bi, khong phai suc chua.
+-- AIHUB (30), AIBOT (80),
+-- F507-F509 (40/phong),
+-- G201-G204 (65/phong).
+--
+-- Tong thiet bi du kien:
+-- 150 PC + 12 thiet bi G + 6 KIT = 168.
 
 BEGIN;
 
--- 1. Upsert dung 9 phong da chot. Khong tao G205-G209.
-INSERT INTO public."Phong" ("MaPhong", "LoaiPhong", "Cum", "SucChua")
+-- =====================================================
+-- 1. UPSERT DANH MUC 9 PHONG
+-- =====================================================
+
+INSERT INTO public."Phong"
+    ("MaPhong", "LoaiPhong", "Cum", "SucChua")
 VALUES
-    ('AIHUB', 'Lab AI', 'AIBOT', 30),
-    ('AIBOT', 'Lab AI', 'AIBOT', 80),
-    ('F507',  'PC',     'F',     40),
-    ('F508',  'PC',     'F',     40),
-    ('F509',  'CISCO',  'F',     40),
-    ('G201',  'BYOD',   'G',     65),
-    ('G202',  'BYOD',   'G',     65),
-    ('G203',  'BYOD',   'G',     65),
-    ('G204',  'BYOD',   'G',     65)
+    ('AIHUB', 'Lab AI', 'AI', 30),
+    ('AIBOT', 'Lab AI', 'AI', 80),
+
+    ('F507', 'PC', 'F', 40),
+    ('F508', 'PC', 'F', 40),
+    ('F509', 'CISCO', 'F', 40),
+
+    ('G201', 'BYOD', 'G', 65),
+    ('G202', 'BYOD', 'G', 65),
+    ('G203', 'BYOD', 'G', 65),
+    ('G204', 'BYOD', 'G', 65)
+
 ON CONFLICT ("MaPhong") DO UPDATE SET
     "LoaiPhong" = EXCLUDED."LoaiPhong",
     "Cum" = EXCLUDED."Cum",
     "SucChua" = EXCLUDED."SucChua";
 
--- 2. Cum F: 50 PC moi phong, tong 150 PC.
+
+-- =====================================================
+-- 2. CUM F: 150 MAY TINH
+-- 50 PC MOI PHONG F507-F509
+-- =====================================================
+
 INSERT INTO public."ThietBi"
     ("MaThietBi", "MaPhong", "Loai", "Ten", "TrangThai")
 SELECT
@@ -42,7 +62,12 @@ CROSS JOIN generate_series(1, 50) AS n(i)
 WHERE p."MaPhong" IN ('F507', 'F508', 'F509')
 ON CONFLICT ("MaPhong", "MaThietBi") DO NOTHING;
 
--- 3. Cum G: moi phong co TV, Wi-Fi va tu sac laptop, tong 12 thiet bi.
+
+-- =====================================================
+-- 3. CUM G: 12 THIET BI
+-- 4 PHONG, MOI PHONG CO 3 THIET BI
+-- =====================================================
+
 INSERT INTO public."ThietBi"
     ("MaThietBi", "MaPhong", "Loai", "Ten", "TrangThai")
 SELECT
@@ -54,15 +79,20 @@ SELECT
 FROM public."Phong" p
 CROSS JOIN (
     VALUES
-        ('-TV01',    'TV',    'Man hinh Tivi trinh chieu'),
-        ('-WIFI',    'WIFI',  'He thong mang khong day'),
+        ('-TV01', 'TV', 'Man hinh Tivi trinh chieu'),
+        ('-WIFI', 'WIFI', 'He thong mang khong day'),
         ('-TUSAC01', 'TUSAC', 'Tu sac laptop')
 ) AS v("Hau", "Loai", "Ten")
 WHERE p."MaPhong" IN ('G201', 'G202', 'G203', 'G204')
 ON CONFLICT ("MaPhong", "MaThietBi") DO NOTHING;
 
--- 4. Hai phong AI: moi phong co AI-KIT01 den AI-KIT03, tong 6 KIT.
--- MaThietBi duoc phep lap lai giua AIHUB va AIBOT.
+
+-- =====================================================
+-- 4. HAI PHONG AI: 6 BO KIT
+-- AIHUB VA AIBOT, MOI PHONG 3 KIT
+-- MaThietBi DUOC LAP LAI GIUA HAI PHONG
+-- =====================================================
+
 INSERT INTO public."ThietBi"
     ("MaThietBi", "MaPhong", "Loai", "Ten", "TrangThai")
 SELECT
@@ -78,22 +108,51 @@ ON CONFLICT ("MaPhong", "MaThietBi") DO NOTHING;
 
 COMMIT;
 
--- 5. Bao cao so luong sau seed (du kien 168 thiet bi neu database chua co them du lieu).
-SELECT
-    "MaPhong",
-    COUNT(*) AS "SoThietBi"
-FROM public."ThietBi"
-WHERE "MaPhong" IN (
-    'AIHUB', 'AIBOT', 'F507', 'F508', 'F509',
-    'G201', 'G202', 'G203', 'G204'
-)
-GROUP BY "MaPhong"
-ORDER BY "MaPhong";
+
+-- =====================================================
+-- 5. KIEM TRA SO LUONG THIET BI THEO PHONG
+-- =====================================================
 
 SELECT
-    COUNT(*) AS "TongThietBiTrongDanhMuc9Phong"
+    p."MaPhong",
+    p."Cum",
+    p."LoaiPhong",
+    p."SucChua",
+    COUNT(t."Id") AS "SoThietBi"
+FROM public."Phong" p
+LEFT JOIN public."ThietBi" t
+    ON t."MaPhong" = p."MaPhong"
+WHERE p."MaPhong" IN (
+    'AIHUB', 'AIBOT',
+    'F507', 'F508', 'F509',
+    'G201', 'G202', 'G203', 'G204'
+)
+GROUP BY
+    p."MaPhong",
+    p."Cum",
+    p."LoaiPhong",
+    p."SucChua"
+ORDER BY p."MaPhong";
+
+
+-- =====================================================
+-- 6. TONG HOP SO LUONG
+-- =====================================================
+
+SELECT
+    COUNT(*) AS "TongSoPhong"
+FROM public."Phong"
+WHERE "MaPhong" IN (
+    'AIHUB', 'AIBOT',
+    'F507', 'F508', 'F509',
+    'G201', 'G202', 'G203', 'G204'
+);
+
+SELECT
+    COUNT(*) AS "TongThietBi"
 FROM public."ThietBi"
 WHERE "MaPhong" IN (
-    'AIHUB', 'AIBOT', 'F507', 'F508', 'F509',
+    'AIHUB', 'AIBOT',
+    'F507', 'F508', 'F509',
     'G201', 'G202', 'G203', 'G204'
 );

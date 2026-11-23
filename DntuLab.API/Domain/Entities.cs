@@ -35,14 +35,14 @@ public class Phong
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     [StringLength(20)]
-    public string MaPhong { get; set; } = null!;          // F507, G201, AIBOT...
+    public string MaPhong { get; set; } = null!;          // F507, G201, AIHUB, AILAB...
 
     [Required, StringLength(20)]
-    public string LoaiPhong { get; set; } = null!;        // PC | BYOD | Lab AI
+    public string LoaiPhong { get; set; } = null!;        // PC | BYOD | Lab AI | CISCO
 
     [Required, StringLength(10)]
     [Column(TypeName = "varchar(10)")]
-    public string Cum { get; set; } = null!;              // F | G | AIBOT
+    public string Cum { get; set; } = null!;              // F | G | AI
 
     [Range(1, int.MaxValue)]
     public int SucChua { get; set; }

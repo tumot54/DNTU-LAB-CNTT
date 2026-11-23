@@ -11,7 +11,15 @@ public static class CumPhong
 {
     public const string F = "F";
     public const string G = "G";
+    public const string AI = "AI";
+}
+
+// Mã phòng trong database PostgreSQL.
+// AIBOT và AIHUB đều thuộc cụm AI (CumPhong.AI).
+public static class MaPhong
+{
     public const string AIBOT = "AIBOT";
+    public const string AIHUB = "AIHUB";
 }
 
 public static class KieuPhong
@@ -19,6 +27,7 @@ public static class KieuPhong
     public const string PC = "PC";
     public const string BYOD = "BYOD";
     public const string LabAI = "Lab AI";
+    public const string CISCO = "CISCO";
 }
 
 public static class LoaiThietBi
@@ -73,7 +82,6 @@ public static class TrangThaiThongBao
     public const string ChuaDoc = "Chưa đọc";
     public const string DaDoc = "Đã đọc";
 }
-
 
 public static class QuyDinh
 {

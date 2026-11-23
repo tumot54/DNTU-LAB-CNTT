@@ -15,8 +15,8 @@ ORDER BY 1;
 -- 2. Danh muc 9 phong va suc chua mong doi.
 WITH expected("MaPhong", "LoaiPhong", "Cum", "SucChua") AS (
     VALUES
-        ('AIHUB', 'Lab AI', 'AIBOT', 30),
-        ('AIBOT', 'Lab AI', 'AIBOT', 80),
+        ('AIHUB', 'Lab AI', 'AI', 30),
+        ('AIBOT', 'Lab AI', 'AI', 80),
         ('F507',  'PC',     'F',     40),
         ('F508',  'PC',     'F',     40),
         ('F509',  'CISCO',  'F',     40),
@@ -42,7 +42,8 @@ FROM expected e
 LEFT JOIN public."Phong" p ON p."MaPhong" = e."MaPhong"
 ORDER BY e."MaPhong";
 
--- 3. Phat hien ma phong cu/ngoai danh muc; khong tu dong xoa.
+-- 3. Phat hien ma phong cu/ngoai danh muc; AILAB la ma cu can bang 0 dong.
+-- Khong tu dong xoa phong cu/ngoai danh muc.
 SELECT "MaPhong", "LoaiPhong", "Cum", "SucChua"
 FROM public."Phong"
 WHERE "MaPhong" IN ('AILAB','G205','G206','G207','G208','G209')

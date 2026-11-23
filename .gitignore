@@ -490,3 +490,19 @@ $RECYCLE.BIN/
 .vs/
 **/bin/
 **/obj/
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local configuration
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+secrets.json
+
+# User secrets and credentials
+*.pem
+*.key
+*.pfx
+*.publishsettings
