@@ -20,7 +20,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("VercelFrontend", policy =>
     {
         policy
-            .WithOrigins("https://dntu-lab-cntt.vercel.app/")
+            .WithOrigins(
+                "https://dntu-lab.vercel.app",
+                "https://dntu-lab-cntt.vercel.app"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
