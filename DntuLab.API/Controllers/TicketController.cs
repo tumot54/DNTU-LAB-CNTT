@@ -31,16 +31,23 @@ public class TicketController : ControllerBase
 
         var room = maPhong.Trim().ToUpperInvariant();
 
-        var tickets = await _context.Tickets
+        var roomQuery = _context.Tickets
             .AsNoTracking()
-            .Where(x => x.ThietBi.MaPhong == room)
+            .Where(x => x.ThietBi.MaPhong == room);
+
+        // Giang vien/KTV chi xem Ticket dang xu ly; lich su da khac phuc chi danh cho QL.
+        if (!User.IsInRole(Roles.QL))
+            roomQuery = roomQuery.Where(x => x.TrangThai != TrangThaiTicket.DaKhacPhuc);
+
+        var roomRows = await roomQuery
             .OrderByDescending(x => x.ThoiGianTao)
             .ThenByDescending(x => x.Id)
             .Select(x => new
             {
                 x.Id,
                 x.MaTicket,
-                x.MaThietBi,
+                x.ThietBiId,
+                MaThietBi = x.ThietBi.MaThietBi,
                 TenThietBi = x.ThietBi.Ten,
                 MaPhong = x.ThietBi.MaPhong,
                 TenNguoiBao = x.NguoiBao.HoTen,
@@ -51,9 +58,16 @@ public class TicketController : ControllerBase
                 x.TrangThai,
                 x.KtvXuLyId,
                 x.ThoiGianCapNhat,
-                x.ThoiGianHoanTat
+                x.ThoiGianHoanTat,
+                DaSuDungQuyenHoanTac = x.ThietBi.DaSuDungQuyenHoanTac,
+                CoTheHoanTac = !x.ThietBi.DaSuDungQuyenHoanTac && x.TrangThai == TrangThaiTicket.ChoXuLy
             })
             .ToListAsync();
+
+        // Mot thiet bi chi hien mot Ticket dang mo; neu du lieu cu co trung, lay Ticket moi nhat.
+        var tickets = User.IsInRole(Roles.QL)
+            ? roomRows
+            : roomRows.GroupBy(x => x.ThietBiId).Select(g => g.First()).ToList();
 
         return Ok(new { success = true, count = tickets.Count, data = tickets });
     }
@@ -69,28 +83,19 @@ public class TicketController : ControllerBase
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!int.TryParse(userIdValue, out var nguoiBaoId)) return Unauthorized();
 
-        // Thiet bi do do GhiNhanTam (cum F) chua tong hop chua duoc tao Ticket chinh thuc.
-        // Loai cac thiet bi nay khoi co che tu dong dong bo de giu dung quy trinh GV tong hop cuoi ca.
-        var maThietBiDangChoTongHop = await _context.GhiNhanTams
-            .Where(g => !g.TicketId.HasValue && g.TrangThai != "Đã tạo Ticket")
-            .Select(g => g.MaThietBi)
-            .Distinct()
-            .ToListAsync();
-
         var devicesCanSync = await _context.ThietBis
-            .Where(d =>
-                (d.TrangThai == TrangThaiThietBi.Hong || d.TrangThai == TrangThaiThietBi.DangBaoTri) &&
-                !maThietBiDangChoTongHop.Contains(d.MaThietBi))
+            .Where(d => d.TrangThai == TrangThaiThietBi.Hong ||
+                        d.TrangThai == TrangThaiThietBi.DangBaoTri)
             .ToListAsync();
 
         // Thiết bị xanh/Sẵn sàng không nằm trong Kanban đang xử lý.
         // Nếu còn Ticket mở do dữ liệu cũ, đóng Ticket để trạng thái nhất quán.
         var readyDeviceCodes = await _context.ThietBis
             .Where(d => d.TrangThai == TrangThaiThietBi.SanSang)
-            .Select(d => d.MaThietBi)
+            .Select(d => d.Id)
             .ToListAsync();
         var staleOpenTickets = await _context.Tickets
-            .Where(t => readyDeviceCodes.Contains(t.MaThietBi) && t.TrangThai != TrangThaiTicket.DaKhacPhuc)
+            .Where(t => readyDeviceCodes.Contains(t.ThietBiId) && t.TrangThai != TrangThaiTicket.DaKhacPhuc)
             .ToListAsync();
         foreach (var staleTicket in staleOpenTickets)
         {
@@ -106,7 +111,7 @@ public class TicketController : ControllerBase
                 : TrangThaiTicket.DangSuaChua;
 
             var openTicket = await _context.Tickets
-                .Where(t => t.MaThietBi == device.MaThietBi && t.TrangThai != TrangThaiTicket.DaKhacPhuc)
+                .Where(t => t.ThietBiId == device.Id && t.TrangThai != TrangThaiTicket.DaKhacPhuc)
                 .OrderByDescending(t => t.ThoiGianTao)
                 .FirstOrDefaultAsync();
 
@@ -114,7 +119,7 @@ public class TicketController : ControllerBase
             {
                 _context.Tickets.Add(new TicketSuCo
                 {
-                    MaThietBi = device.MaThietBi,
+                    ThietBiId = device.Id,
                     LoaiLoi = device.TrangThai == TrangThaiThietBi.Hong ? "Thiết bị hỏng" : "Bảo trì thiết bị",
                     GhiChu = "Ticket được hệ thống đồng bộ từ trạng thái thiết bị đã có.",
                     NguoiBaoId = nguoiBaoId,
@@ -146,6 +151,10 @@ public class TicketController : ControllerBase
             .AsNoTracking()
             .AsQueryable();
 
+        // KTV chi can Ticket dang xu ly; lich su Ticket da khac phuc chi danh cho QL.
+        if (!User.IsInRole(Roles.QL))
+            query = query.Where(x => x.TrangThai != TrangThaiTicket.DaKhacPhuc);
+
         if (!string.IsNullOrWhiteSpace(trangThai))
         {
             query = query.Where(x => x.TrangThai == trangThai);
@@ -157,7 +166,8 @@ public class TicketController : ControllerBase
             {
                 x.Id,
                 x.MaTicket,
-                x.MaThietBi,
+                x.ThietBiId,
+                MaThietBi = x.ThietBi.MaThietBi,
                 TenThietBi = x.ThietBi.Ten,
                 MaPhong = x.ThietBi.MaPhong,
                 TenNguoiBao = x.NguoiBao.HoTen,
@@ -168,7 +178,9 @@ public class TicketController : ControllerBase
                 x.TrangThai,
                 x.KtvXuLyId,
                 x.ThoiGianCapNhat,
-                x.ThoiGianHoanTat
+                x.ThoiGianHoanTat,
+                DaSuDungQuyenHoanTac = x.ThietBi.DaSuDungQuyenHoanTac,
+                CoTheHoanTac = !x.ThietBi.DaSuDungQuyenHoanTac && x.TrangThai == TrangThaiTicket.ChoXuLy
             })
             .ToListAsync();
 
@@ -198,7 +210,7 @@ public class TicketController : ControllerBase
         }
 
         var thietBi = await _context.ThietBis
-            .FirstOrDefaultAsync(x => x.MaThietBi == request.MaThietBi);
+            .FirstOrDefaultAsync(x => x.Id == request.ThietBiId);
 
         if (thietBi == null)
         {
@@ -214,13 +226,14 @@ public class TicketController : ControllerBase
             return Conflict(new { success = false, message = "KTV chỉ được thao tác trên thiết bị màu đỏ hoặc vàng. Thiết bị màu xanh không thể tạo Ticket từ tài khoản KTV." });
 
         var ticketDangMo = await _context.Tickets.AnyAsync(x =>
-            x.MaThietBi == request.MaThietBi && x.TrangThai != TrangThaiTicket.DaKhacPhuc);
+            x.ThietBiId == request.ThietBiId && x.TrangThai != TrangThaiTicket.DaKhacPhuc);
         if (ticketDangMo)
             return Conflict(new { success = false, message = "Thiết bị đã có Ticket chưa hoàn tất. Không tạo Ticket trùng." });
 
         var ticket = new TicketSuCo
         {
-            MaThietBi = request.MaThietBi,
+            ThietBiId = thietBi.Id,
+            ThietBi = thietBi,
             LoaiLoi = request.LoaiLoi,
             GhiChu = request.GhiChu,
             NguoiBaoId = nguoiBaoId,
@@ -240,8 +253,11 @@ public class TicketController : ControllerBase
                 success = true,
                 message = "Tạo Ticket thành công.",
                 id = ticket.Id,
-                maThietBi = ticket.MaThietBi,
-                trangThai = ticket.TrangThai
+                thietBiId = ticket.ThietBiId,
+                maThietBi = ticket.ThietBi.MaThietBi,
+                trangThai = ticket.TrangThai,
+                daSuDungQuyenHoanTac = thietBi.DaSuDungQuyenHoanTac,
+                coTheHoanTac = !thietBi.DaSuDungQuyenHoanTac
             });
     }
 
@@ -329,7 +345,7 @@ public class TicketController : ControllerBase
         ticket.TrangThai = request.TrangThai;
         ticket.KtvXuLyId = ktvId;
         ticket.ThoiGianCapNhat = DateTime.Now;
-        var thietBiCapNhat = await _context.ThietBis.FirstOrDefaultAsync(x => x.MaThietBi == ticket.MaThietBi);
+        var thietBiCapNhat = await _context.ThietBis.FirstOrDefaultAsync(x => x.Id == ticket.ThietBiId);
         if (thietBiCapNhat != null)
         {
             thietBiCapNhat.TrangThai = request.TrangThai == TrangThaiTicket.DaKhacPhuc
@@ -355,6 +371,58 @@ public class TicketController : ControllerBase
         });
     }
 
+    // Hoàn tác Ticket vừa tạo: xóa hẳn Ticket, trả thiết bị về Sẵn sàng và khóa quyền hoàn tác cho thiết bị này.
+    [HttpPost("{id:int}/hoan-tac")]
+    [Authorize(Roles = "GV,KTV,QL")]
+    public async Task<IActionResult> HoanTac(int id)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        // NpgsqlRetryingExecutionStrategy yêu cầu transaction do ứng dụng mở phải
+        // nằm hoàn toàn bên trong delegate của execution strategy.
+        var strategy = _context.Database.CreateExecutionStrategy();
+
+        return await strategy.ExecuteAsync<IActionResult>(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                System.Data.IsolationLevel.Serializable);
+
+            var ticket = await _context.Tickets.FirstOrDefaultAsync(x => x.Id == id);
+            if (ticket == null)
+                return NotFound(new { success = false, message = "Ticket không còn tồn tại hoặc đã được hoàn tác." });
+
+            // Giảng viên chỉ được hoàn tác Ticket do chính mình tạo; KTV/QL được quyền hỗ trợ.
+            if (User.IsInRole(Roles.GV) && ticket.NguoiBaoId != userId)
+                return Forbid();
+
+            var device = await _context.ThietBis.FirstOrDefaultAsync(x => x.Id == ticket.ThietBiId);
+            if (device == null)
+                return NotFound(new { success = false, message = "Không tìm thấy thiết bị của Ticket." });
+
+            if (device.DaSuDungQuyenHoanTac)
+                return Conflict(new { success = false, message = "Thiết bị đã sử dụng quyền hoàn tác. Không thể hoàn tác thêm lần nữa." });
+
+            if (ticket.TrangThai != TrangThaiTicket.ChoXuLy)
+                return Conflict(new { success = false, message = "Chỉ Ticket mới ở trạng thái Chờ xử lý mới được hoàn tác." });
+
+
+            device.DaSuDungQuyenHoanTac = true;
+            device.TrangThai = TrangThaiThietBi.SanSang;
+            _context.Tickets.Remove(ticket);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Đã hoàn tác và xóa Ticket. Thiết bị đã sử dụng quyền hoàn tác.",
+                thietBiId = device.Id,
+                daSuDungQuyenHoanTac = true
+            });
+        });
+    }
+
     [HttpGet("{id:int}")]
     [Authorize(Roles = "KTV,QL")]
     public async Task<IActionResult> GetById(int id)
@@ -367,7 +435,8 @@ public class TicketController : ControllerBase
                 x.Id,
                 x.MaTicket,
 
-                x.MaThietBi,
+                x.ThietBiId,
+                MaThietBi = x.ThietBi.MaThietBi,
                 TenThietBi = x.ThietBi.Ten,
                 LoaiThietBi = x.ThietBi.Loai,
                 MaPhong = x.ThietBi.MaPhong,
@@ -388,16 +457,18 @@ public class TicketController : ControllerBase
                     : null,
 
                 x.ThoiGianCapNhat,
-                x.ThoiGianHoanTat
+                x.ThoiGianHoanTat,
+                DaSuDungQuyenHoanTac = x.ThietBi.DaSuDungQuyenHoanTac,
+                CoTheHoanTac = !x.ThietBi.DaSuDungQuyenHoanTac && x.TrangThai == TrangThaiTicket.ChoXuLy
             })
             .FirstOrDefaultAsync();
 
-        if (ticket == null)
+        if (ticket == null || (User.IsInRole(Roles.KTV) && ticket.TrangThai == TrangThaiTicket.DaKhacPhuc))
         {
             return NotFound(new
             {
                 success = false,
-                message = "Không tìm thấy Ticket."
+                message = "Không tìm thấy Ticket đang xử lý. Lịch sử Ticket chỉ dành cho Quản lý."
             });
         }
 
@@ -448,6 +519,10 @@ public class TicketController : ControllerBase
             .AsNoTracking()
             .AsQueryable();
 
+        // Bao cao lich su day du chi danh cho QL.
+        if (!User.IsInRole(Roles.QL))
+            query = query.Where(x => x.TrangThai != TrangThaiTicket.DaKhacPhuc);
+
         if (!string.IsNullOrWhiteSpace(request.TrangThai))
         {
             query = query.Where(x =>
@@ -487,7 +562,8 @@ public class TicketController : ControllerBase
             {
                 x.Id,
                 x.MaTicket,
-                x.MaThietBi,
+                x.ThietBiId,
+                MaThietBi = x.ThietBi.MaThietBi,
                 TenThietBi = x.ThietBi.Ten,
                 MaPhong = x.ThietBi.MaPhong,
                 x.LoaiLoi,

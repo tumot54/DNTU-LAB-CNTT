@@ -1,12 +1,12 @@
-﻿
+
 using System.ComponentModel.DataAnnotations;
 
 namespace DntuLab.Api.DTOs;
 
 public class TaoTicketRequest
 {
-    [Required, StringLength(30)]
-    public string MaThietBi { get; set; } = string.Empty;
+    [Range(1, int.MaxValue)]
+    public int ThietBiId { get; set; }
 
     [Required, StringLength(100)]
     public string LoaiLoi { get; set; } = string.Empty;

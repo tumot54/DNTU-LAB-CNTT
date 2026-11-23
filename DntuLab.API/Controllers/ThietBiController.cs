@@ -22,38 +22,6 @@ public class ThietBiController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        // Bổ sung 6 KIT AIBOT nếu còn thiếu.
-        var coPhongAibot = await _context.Phongs
-            .AnyAsync(x => x.MaPhong == "AIBOT");
-
-        if (coPhongAibot)
-        {
-            var kitHienCo = await _context.ThietBis
-                .Where(x => x.MaPhong == "AIBOT"
-                    && x.Loai == LoaiThietBi.KIT)
-                .Select(x => x.MaThietBi)
-                .ToListAsync();
-
-            for (var i = 1; i <= 6; i++)
-            {
-                var ma = $"AI-KIT{i:00}";
-
-                if (!kitHienCo.Contains(ma))
-                {
-                    _context.ThietBis.Add(new ThietBi
-                    {
-                        MaThietBi = ma,
-                        MaPhong = "AIBOT",
-                        Loai = LoaiThietBi.KIT,
-                        Ten = $"Bộ Kit Robot & mô hình STEM {i:00}",
-                        TrangThai = TrangThaiThietBi.SanSang
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-        }
-
         var thietBis = await _context.ThietBis
             .AsNoTracking()
             .OrderBy(x => x.MaPhong)
@@ -68,10 +36,10 @@ public class ThietBiController : ControllerBase
         });
     }
 
-    [HttpPut("{maThietBi}/trang-thai")]
+    [HttpPut("{id:int}/trang-thai")]
     [Authorize(Roles = "KTV,QL")]
     public async Task<IActionResult> CapNhatTrangThai(
-        string maThietBi,
+        int id,
         [FromBody] CapNhatThietBiRequest request)
     {
         var trangThaiHopLe = new[]
@@ -107,7 +75,7 @@ public class ThietBiController : ControllerBase
             try
             {
                 var device = await _context.ThietBis
-                    .FirstOrDefaultAsync(x => x.MaThietBi == maThietBi);
+                    .FirstOrDefaultAsync(x => x.Id == id);
 
                 if (device == null)
                 {
@@ -147,7 +115,7 @@ public class ThietBiController : ControllerBase
                 // Tìm Ticket chưa khắc phục gần nhất.
                 var ticket = await _context.Tickets
                     .Where(x =>
-                        x.MaThietBi == maThietBi &&
+                        x.ThietBiId == id &&
                         x.TrangThai != TrangThaiTicket.DaKhacPhuc)
                     .OrderByDescending(x => x.ThoiGianTao)
                     .FirstOrDefaultAsync();
@@ -178,7 +146,7 @@ public class ThietBiController : ControllerBase
                         // Chưa có Ticket đang hoạt động: tạo mới.
                         ticket = new TicketSuCo
                         {
-                            MaThietBi = maThietBi,
+                            ThietBiId = device.Id,
                             LoaiLoi = request.TrangThai == TrangThaiThietBi.Hong
                                 ? "Thiết bị hỏng"
                                 : "Bảo trì thiết bị",
@@ -225,6 +193,7 @@ public class ThietBiController : ControllerBase
                     message = "Đã đồng bộ trạng thái thiết bị và Ticket.",
                     data = new
                     {
+                        device.Id,
                         device.MaThietBi,
                         device.MaPhong,
                         device.TrangThai,

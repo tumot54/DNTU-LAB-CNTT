@@ -74,11 +74,6 @@ public static class TrangThaiThongBao
     public const string DaDoc = "Đã đọc";
 }
 
-public static class TrangThaiGhiNhan
-{
-    public const string ChuaTongHop = "Chưa tổng hợp";
-    public const string DaTaoTicket = "Đã tạo Ticket";
-}
 
 public static class QuyDinh
 {

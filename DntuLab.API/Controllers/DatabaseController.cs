@@ -63,15 +63,7 @@ public class DatabaseController : ControllerBase
             var importedLogs = await _context.NhatKys
                 .Where(x => importedScheduleIdSet.Contains(x.LichDayId))
                 .ToListAsync();
-            var importedTemporaryNotes = await _context.GhiNhanTams
-                .Where(x => importedScheduleIdSet.Contains(x.LichDayId))
-                .ToListAsync();
 
-            // Reset Demo phai xoa TOAN BO ghi nhan su co tam cu,
-            // khong chi cac ghi nhan thuoc lich import tu thang 02/2027.
-            // Neu chi xoa theo importedScheduleIds, cac ghi nhan cu nhu L081
-            // van con va tiep tuc hien thi sau khi reset.
-            var allTemporaryNotes = await _context.GhiNhanTams.ToListAsync();
 
             var importedSchedules = await _context.LichDays
                 .Where(x => importedScheduleIdSet.Contains(x.Id))
@@ -106,11 +98,10 @@ public class DatabaseController : ControllerBase
             _context.ThongBaos.RemoveRange(oldRoomNotifications);
             _context.YeuCaus.RemoveRange(allRoomRequests);
             _context.NhatKys.RemoveRange(importedLogs);
-            _context.GhiNhanTams.RemoveRange(allTemporaryNotes);
             _context.LichDays.RemoveRange(importedSchedules);
 
             if (oldRoomNotifications.Count > 0 || allRoomRequests.Count > 0 ||
-                importedSchedules.Count > 0 || importedLogs.Count > 0 || allTemporaryNotes.Count > 0)
+                importedSchedules.Count > 0 || importedLogs.Count > 0)
                 await _context.SaveChangesAsync();
 
             var allLogsForReset = await _context.NhatKys
@@ -295,7 +286,7 @@ public class DatabaseController : ControllerBase
             AddSeed("KIT", 2, "Bộ KIT thực hành hoạt động bất thường", "Bộ KIT không nhận tín hiệu ổn định từ bộ điều khiển hoặc cảm biến. Cần kiểm tra cáp, nguồn và module kết nối.", false);
 
             // Neu CSDL thuc te khong co du loai thiet bi, bo sung tu cac dong con lai.
-            foreach (var device in devices.Where(d => seed.All(x => x.Device.MaThietBi != d.MaThietBi)).OrderBy(d => d.MaPhong).ThenBy(d => d.MaThietBi))
+            foreach (var device in devices.Where(d => seed.All(x => x.Device.Id != d.Id)).OrderBy(d => d.MaPhong).ThenBy(d => d.MaThietBi))
             {
                 if (seed.Count >= 6) break;
                 var red = seed.Count % 2 == 0;
@@ -311,7 +302,7 @@ public class DatabaseController : ControllerBase
                 device.TrangThai = item.TrangThaiThietBi;
                 _context.Tickets.Add(new TicketSuCo
                 {
-                    MaThietBi = device.MaThietBi,
+                    ThietBiId = device.Id,
                     LoaiLoi = item.LoaiLoi,
                     GhiChu = item.GhiChu,
                     NguoiBaoId = userId,
@@ -344,8 +335,6 @@ public class DatabaseController : ControllerBase
                 roomChangeRequestsSeeded = seededRoomRequests,
                 auditNotificationsSeeded = seededAuditNotifications,
                 oldRoomNotificationsDeleted = oldRoomNotifications.Count,
-                importedTemporaryNotesDeleted = importedTemporaryNotes.Count,
-                totalTemporaryNotesDeleted = allTemporaryNotes.Count,
                 fixedScheduleFrom = fixedScheduleFrom.ToString("dd/MM/yyyy"),
                 fixedScheduleThrough = fixedScheduleThrough.ToString("dd/MM/yyyy"),
                 currentVietnamDate = realNow.ToString("yyyy-MM-dd"),

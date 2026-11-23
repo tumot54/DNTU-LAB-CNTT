@@ -13,7 +13,6 @@ public class LabDbContext(DbContextOptions<LabDbContext> options) : DbContext(op
     public DbSet<TicketSuCo> Tickets => Set<TicketSuCo>();
     public DbSet<YeuCauDoiPhong> YeuCaus => Set<YeuCauDoiPhong>();
     public DbSet<ThongBao> ThongBaos => Set<ThongBao>();
-    public DbSet<GhiNhanTam> GhiNhanTams => Set<GhiNhanTam>();
 
     // Mã nghiệp vụ hiển thị (L001, YC001, TK001...) sinh từ Id
     // PostgreSQL: sinh mã hiển thị từ Id, ví dụ L001, YC001, TK001.
@@ -37,10 +36,15 @@ public class LabDbContext(DbContextOptions<LabDbContext> options) : DbContext(op
             t.HasCheckConstraint("CK_Phong_SucChua", "\"SucChua\" > 0");
         });
 
-        b.Entity<ThietBi>().ToTable(t =>
+        b.Entity<ThietBi>(e =>
         {
+            e.HasIndex(x => new { x.MaPhong, x.MaThietBi }).IsUnique()
+                .HasDatabaseName("UQ_ThietBi_MaPhong_MaThietBi");
+            e.ToTable(t =>
+            {
             t.HasCheckConstraint("CK_ThietBi_Loai", In("Loai", LoaiThietBi.PC, LoaiThietBi.TV, LoaiThietBi.WIFI, LoaiThietBi.TUSAC, LoaiThietBi.KIT));
             t.HasCheckConstraint("CK_ThietBi_TrangThai", In("TrangThai", TrangThaiThietBi.SanSang, TrangThaiThietBi.Hong, TrangThaiThietBi.DangBaoTri));
+            });
         });
 
         b.Entity<LichDay>(e =>
@@ -65,9 +69,14 @@ public class LabDbContext(DbContextOptions<LabDbContext> options) : DbContext(op
 
         b.Entity<TicketSuCo>(e =>
         {
+            e.HasIndex(x => x.ThietBiId)
+                .IsUnique()
+                .HasDatabaseName("UX_Ticket_ThietBi_DangMo")
+                .HasFilter("\"TrangThai\" <> 'Đã khắc phục'");
             e.ToTable(t => t.HasCheckConstraint("CK_Ticket_TrangThai",
                 In("TrangThai", TrangThaiTicket.ChoXuLy, TrangThaiTicket.DangSuaChua, TrangThaiTicket.BaoCaoCapTren, TrangThaiTicket.DaKhacPhuc)));
             e.Property(x => x.MaTicket).HasComputedColumnSql(Code("TK"), stored: true);
+            e.HasOne(x => x.ThietBi).WithMany().HasForeignKey(x => x.ThietBiId);
         });
 
         b.Entity<YeuCauDoiPhong>(e =>
@@ -88,21 +97,6 @@ public class LabDbContext(DbContextOptions<LabDbContext> options) : DbContext(op
         b.Entity<ThongBao>()
             .Property(x => x.MaThongBao).HasComputedColumnSql(Code("TB"), stored: true);
 
-
-        b.Entity<GhiNhanTam>(e =>
-        {
-            e.ToTable("GhiNhanTam", "public", t =>
-            {
-                t.HasCheckConstraint(
-                    "CK_GhiNhan_TrangThai",
-                    In("TrangThai",
-                        TrangThaiGhiNhan.ChuaTongHop,
-                        TrangThaiGhiNhan.DaTaoTicket));
-            });
-
-            e.Property(x => x.MaGhiNhan)
-                .HasComputedColumnSql(Code("GN"), stored: true);
-        });
 
 
         // Không cascade delete: dữ liệu vận hành (nhật ký, ticket) không mất theo khi xóa dữ liệu gốc.

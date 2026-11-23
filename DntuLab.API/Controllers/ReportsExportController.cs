@@ -51,7 +51,7 @@ public class ReportsExportController : ControllerBase
         if (to.HasValue) { var end = to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue); ticketsQuery = ticketsQuery.Where(x => x.ThoiGianTao < end); }
         var ticketDetails = await ticketsQuery
             .OrderByDescending(x => x.ThoiGianTao)
-            .Select(x => new TicketDetail(x.MaTicket, x.MaThietBi, x.ThietBi.Ten, x.ThietBi.MaPhong, x.LoaiLoi, x.TrangThai, x.ThoiGianTao, x.ThoiGianHoanTat))
+            .Select(x => new TicketDetail(x.MaTicket, x.ThietBi.MaThietBi, x.ThietBi.Ten, x.ThietBi.MaPhong, x.LoaiLoi, x.TrangThai, x.ThoiGianTao, x.ThoiGianHoanTat))
             .ToListAsync();
 
         var ticketRows = ticketDetails.GroupBy(x => x.TrangThai)

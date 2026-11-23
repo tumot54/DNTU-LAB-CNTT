@@ -11,7 +11,10 @@ public class GhiNhanTam
 
     public int LichDayId { get; set; }
 
-    public string MaThietBi { get; set; } = string.Empty;
+    public int ThietBiId { get; set; }
+
+    [ForeignKey(nameof(ThietBiId))]
+    public ThietBi ThietBi { get; set; } = null!;
 
     public string MoTa { get; set; } = string.Empty;
 

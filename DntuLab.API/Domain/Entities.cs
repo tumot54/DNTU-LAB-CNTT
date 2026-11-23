@@ -55,13 +55,16 @@ public class Phong
 }
 
 [Table("ThietBi")]
+[Index(nameof(MaPhong), nameof(MaThietBi), IsUnique = true, Name = "UQ_ThietBi_MaPhong_MaThietBi")]
 [Index(nameof(MaPhong), Name = "IX_ThietBi_MaPhong")]
 public class ThietBi
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    [StringLength(30)]
-    public string MaThietBi { get; set; } = null!;        // F507-PC01, G201-TV01...
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int Id { get; set; }
+
+    [Required, StringLength(30)]
+    public string MaThietBi { get; set; } = null!;        // Mã hiển thị, duy nhất trong từng phòng
 
     [Required, StringLength(20)]
     public string MaPhong { get; set; } = null!;
@@ -75,6 +78,9 @@ public class ThietBi
 
     [Required, StringLength(20)]
     public string TrangThai { get; set; } = TrangThaiThietBi.SanSang;
+
+    // Đánh dấu thiết bị đã sử dụng quyền hoàn tác Ticket (chỉ một lần trong vòng đời thiết bị).
+    public bool DaSuDungQuyenHoanTac { get; set; } = false;
 
     [ForeignKey(nameof(MaPhong))]
     [InverseProperty(nameof(Domain.Phong.ThietBis))]
@@ -168,7 +174,7 @@ public class NhatKyCheckIn
 
 [Table("TicketSuCo")]
 [Index(nameof(TrangThai), Name = "IX_Ticket_TrangThai")]
-[Index(nameof(MaThietBi), Name = "IX_Ticket_MaThietBi")]
+[Index(nameof(ThietBiId), Name = "IX_Ticket_ThietBiId")]
 public class TicketSuCo
 {
     [Key]
@@ -179,8 +185,7 @@ public class TicketSuCo
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]  // TK001...
     public string MaTicket { get; private set; } = null!;
 
-    [Required, StringLength(30)]
-    public string MaThietBi { get; set; } = null!;
+    public int ThietBiId { get; set; }
 
     [Required, StringLength(100)]
     public string LoaiLoi { get; set; } = "Sự cố thiết bị";
@@ -204,7 +209,7 @@ public class TicketSuCo
     [Column(TypeName = "timestamp(0) without time zone")]
     public DateTime? ThoiGianHoanTat { get; set; }
 
-    [ForeignKey(nameof(MaThietBi))]
+    [ForeignKey(nameof(ThietBiId))]
     public ThietBi ThietBi { get; set; } = null!;
 
     [ForeignKey(nameof(NguoiBaoId))]

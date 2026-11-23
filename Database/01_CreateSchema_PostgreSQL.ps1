@@ -1,13 +1,18 @@
-# DNTULAB POSTGRESQL - TAO CAC BANG BANG EF CORE MIGRATION
-# Chay PowerShell tai thu muc chua file DntuLab.API.csproj.
-# Yeu cau: da co thu muc Migrations/ voi migration PostgreSQL InitialPostgreSql.
-# Neu chua co migration, tao migration truoc bang lenh:
-# dotnet ef migrations add InitialPostgreSql
+# DNTULAB POSTGRESQL - TAO/CAP NHAT SCHEMA BANG EF CORE MIGRATION
+# Chay PowerShell tai thu muc chua DntuLab.API.csproj.
+# Lenh nay ap dung cac migration da co; KHONG reset database.
+# LUU Y: migration RemoveTemporaryIncidentNotes se xoa bang GhiNhanTam cu.
+# Hay sao luu database truoc neu can giu lich su GN00x.
 
 $ErrorActionPreference = 'Stop'
 
+if (-not (Test-Path ".\DntuLab.API.csproj")) {
+    throw "Khong tim thay DntuLab.API.csproj. Hay mo PowerShell tai thu muc project Backend."
+}
+
 dotnet ef database update
 if ($LASTEXITCODE -ne 0) {
-    throw 'EF Core database update that bai. Kiem tra connection string va thu muc Migrations.'
+    throw "EF Core database update that bai. Dung lai, khong chay cac file seed."
 }
-Write-Host 'Da tao/cap nhat schema PostgreSQL thanh cong.' -ForegroundColor Green
+
+Write-Host "Da ap dung migration PostgreSQL thanh cong." -ForegroundColor Green

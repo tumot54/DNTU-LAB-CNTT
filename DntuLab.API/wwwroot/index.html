@@ -205,16 +205,17 @@ const genDevices = (maPhong, prefix, n, loai, ten) =>
 
 
 const INIT_PHONG = [
-  { maPhong: "F507", loaiPhong: "PC", sucChua: 50 },
-  { maPhong: "F508", loaiPhong: "PC", sucChua: 50 },
-  { maPhong: "F509", loaiPhong: "PC", sucChua: 50 },
-  ...Array.from({ length: 9 }, (_, i) => ({ maPhong: `G${201 + i}`, loaiPhong: "BYOD", sucChua: 60 })),
-  { maPhong: "AIBOT", loaiPhong: "Lab AI", sucChua: 80 },
+  { maPhong: "F507", loaiPhong: "PC", sucChua: 40, cum: "F" },
+  { maPhong: "F508", loaiPhong: "PC", sucChua: 40, cum: "F" },
+  { maPhong: "F509", loaiPhong: "CISCO", sucChua: 40, cum: "F" },
+  ...Array.from({ length: 4 }, (_, i) => ({ maPhong: `G${201 + i}`, loaiPhong: "BYOD", sucChua: 65, cum: "G" })),
+  { maPhong: "AIHUB", loaiPhong: "Lab AI", sucChua: 30, cum: "AI" },
+  { maPhong: "AIBOT", loaiPhong: "Lab AI", sucChua: 80, cum: "AI" },
 ];
 
 const INIT_THIETBI = [
   ...["F507", "F508", "F509"].flatMap((p) => genDevices(p, `${p}-PC`, 50, "PC", "Máy tính")),
-  ...Array.from({ length: 9 }, (_, i) => {
+  ...Array.from({ length: 4 }, (_, i) => {
     const p = `G${201 + i}`;
     return [
       { maThietBi: `${p}-TV01`, maPhong: p, loai: "TV", ten: "Màn hình Tivi trình chiếu", trangThai: "Sẵn sàng" },
@@ -222,7 +223,8 @@ const INIT_THIETBI = [
       { maThietBi: `${p}-TUSAC01`, maPhong: p, loai: "TUSAC", ten: "Tủ sạc laptop", trangThai: "Sẵn sàng" },
     ];
   }).flat(),
-  ...genDevices("AIBOT", "AI-KIT", 6, "KIT", "Bộ Kit Robot & mô hình STEM"),
+  ...genDevices("AIHUB", "AI-KIT", 3, "KIT", "Bộ Kit Robot & mô hình STEM"),
+  ...genDevices("AIBOT", "AI-KIT", 3, "KIT", "Bộ Kit Robot & mô hình STEM"),
 ];
 
 const INIT_LICH = [
@@ -294,7 +296,7 @@ function DeviceGrid({ devices, onPick, restrictPickToFaulty = false }) {
 
       {devices.map((d) => (
 
-        <button key={d.maThietBi} onClick={() => onPick && onPick(d)} disabled={!onPick || (restrictPickToFaulty && d.trangThai === "Sẵn sàng")} title={`${d.ten} - ${d.trangThai}${restrictPickToFaulty && d.trangThai === "Sẵn sàng" ? " · KTV không thể chọn thiết bị màu xanh" : " · Nhấn để thao tác"}`}
+        <button key={d.id ?? `${d.maPhong}-${d.maThietBi}`} onClick={() => onPick && onPick(d)} disabled={!onPick || (restrictPickToFaulty && d.trangThai === "Sẵn sàng")} title={`${d.ten} - ${d.trangThai}${restrictPickToFaulty && d.trangThai === "Sẵn sàng" ? " · KTV không thể chọn thiết bị màu xanh" : " · Nhấn để thao tác"}`}
 
           className={`relative border-2 rounded-md p-2 text-center transition ${style[d.trangThai]} ${onPick && !(restrictPickToFaulty && d.trangThai === "Sẵn sàng") ? "hover:shadow-md cursor-pointer" : "cursor-not-allowed opacity-80"}`}>
 
@@ -338,9 +340,10 @@ const Legend = () => (
 
 function TeacherView(S) {
 
-  const { systemDate, dsPhong, dsThietBi, dsLich, setDsLich, dsNhatKy, setDsNhatKy, dsTicket, setDsTicket, setDsThietBi, dsYeuCau, setDsYeuCau, setDsThongBao, dsGhiNhanTam, setDsGhiNhanTam, systemTime, gv, currentUser, notify } = S;
+  const { systemDate, dsPhong, dsThietBi, dsLich, setDsLich, dsNhatKy, setDsNhatKy, dsTicket, setDsTicket, setDsThietBi, dsYeuCau, setDsYeuCau, setDsThongBao, systemTime, gv, currentUser, notify } = S;
 
   const [tab, setTab] = useState(1);
+  const [ticketUndoTarget, setTicketUndoTarget] = useState(null);
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date(systemDate + "T12:00:00")));
   useEffect(() => { setWeekAnchor(startOfWeek(new Date(systemDate + "T12:00:00"))); }, [systemDate]);
 
@@ -568,66 +571,44 @@ function TeacherView(S) {
     } catch (e) { notify(e.message, "error"); }
   };
 
+  const hoanTacTicket = async (ticket) => {
+    try {
+      await apiFetch(`/api/Ticket/${ticket.id}/hoan-tac`, { method:"POST" }, S.token);
+      const [devicesRes, ticketsRes] = await Promise.all([
+        apiFetch("/api/ThietBi", {}, S.token),
+        apiFetch(`/api/Ticket/phong/${encodeURIComponent(ticket.maPhong)}`, {}, S.token)
+      ]);
+      S.setDsThietBi(unwrapData(devicesRes).map(x => ({ id:x.id, maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai })));
+      S.setDsTicket(unwrapData(ticketsRes).map(mapTicketFromApi));
+      setTicketUndoTarget(null);
+      notify(`Đã hoàn tác ${ticket.maTicket}; Ticket đã được xóa và thiết bị đã sử dụng quyền hoàn tác.`, "ok");
+    } catch (e) { notify(e.message, "error"); }
+  };
+
   const submitTicket = async () => {
     const d = tbChon;
     if (!moTaSuCo.trim()) { notify("Vui lòng mô tả sự cố trước khi gửi.", "error"); return; }
-    const lich = dsLich.find(l => l.maPhong === d.maPhong && l.trangThai === "Đang diễn ra" && l.id != null)
-      || dsLich.find(l => l.maPhong === d.maPhong && l.gv === gv && l.trangThai !== "Đã kết thúc" && l.id != null);
     try {
-      if (d.maPhong.startsWith("F")) {
-        if (!lich) throw new Error("Không tìm thấy lịch database phù hợp để ghi nhận tạm.");
-        await apiFetch("/api/GhiNhanTam", { method:"POST", body:JSON.stringify({ lichDayId:Number(lich.id), maThietBi:d.maThietBi, moTa:moTaSuCo.trim() }) }, S.token);
-        const [records, devicesRes] = await Promise.all([
-          apiFetch(`/api/GhiNhanTam/theo-lich/${lich.id}`, {}, S.token),
-          apiFetch("/api/ThietBi", {}, S.token)
-        ]);
-        setDsGhiNhanTam(prev => [...prev.filter(x => String(x.lichDayId) !== String(lich.id)), ...unwrapData(records).map(x => ({ id:x.id, maGhiNhan:x.maGhiNhan || `GN${x.id}`, lichDayId:x.lichDayId, maLich:lich.maLich, maPhong:d.maPhong, maThietBi:x.maThietBi, tenThietBi:x.tenThietBi, moTa:x.moTa, nguoiGhi:gv, thoiGian:x.thoiGian, trangThai:x.trangThai }))]);
-        S.setDsThietBi(unwrapData(devicesRes).map(x => ({
-          maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai
-        })));
-        notify("Đã lưu ghi nhận tạm; thiết bị đã chuyển sang màu đỏ. Ticket chính thức được tạo khi tổng hợp.", "ok");
-      } else {
-        await apiFetch("/api/Ticket", {
-          method:"POST",
-          body:JSON.stringify({ maThietBi:d.maThietBi, loaiLoi:loi || "Sự cố thiết bị", ghiChu:moTaSuCo.trim() })
-        }, S.token);
+      if (!Number.isInteger(Number(d.id)) || Number(d.id) <= 0) throw new Error("Thiết bị chưa có Id từ database. Hãy tải lại dữ liệu.");
+      await apiFetch("/api/Ticket", {
+        method:"POST",
+        body:JSON.stringify({ thietBiId:Number(d.id), loaiLoi:loi || "Sự cố thiết bị", ghiChu:moTaSuCo.trim() })
+      }, S.token);
 
-        // Cap nhat ngay so do thiet bi va danh sach Ticket, khong can F5.
-        const [devicesRes, ticketsRes] = await Promise.all([
-          apiFetch("/api/ThietBi", {}, S.token),
-          apiFetch(`/api/Ticket/phong/${encodeURIComponent(d.maPhong)}`, {}, S.token)
-        ]);
-        S.setDsThietBi(unwrapData(devicesRes).map(x => ({
-          maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai
-        })));
-        S.setDsTicket(unwrapData(ticketsRes).map(mapTicketFromApi));
-        notify("Đã tạo Ticket; sơ đồ thiết bị và danh sách Ticket đã được cập nhật.", "ok");
-      }
+      // Cập nhật ngay sơ đồ thiết bị và danh sách Ticket cho mọi phòng.
+      const [devicesRes, ticketsRes] = await Promise.all([
+        apiFetch("/api/ThietBi", {}, S.token),
+        apiFetch(`/api/Ticket/phong/${encodeURIComponent(d.maPhong)}`, {}, S.token)
+      ]);
+      S.setDsThietBi(unwrapData(devicesRes).map(x => ({
+        id:x.id, maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai
+      })));
+      S.setDsTicket(unwrapData(ticketsRes).map(mapTicketFromApi));
+      notify("Đã tạo Ticket và chuyển vào danh sách Ticket đang xử lý.", "ok");
       setTbChon(null); setGhiChu(""); setMoTaSuCo(""); setLoi(LOI[0]);
     } catch (e) { notify(e.message, "error"); }
   };
 
-  const guiTicketTongHop = async (g) => {
-    try {
-      if (g.id == null) throw new Error("Ghi nhận tạm chưa có ID database. Hãy tải lại dữ liệu.");
-      const result = await apiFetch(`/api/GhiNhanTam/${g.id}/tong-hop`, { method:"POST" }, S.token);
-      const lichDayId = Number(g.lichDayId ?? result?.lichDayId);
-      if (!Number.isInteger(lichDayId) || lichDayId <= 0) {
-        throw new Error("Ghi nhận thiếu LichDayId. Hãy tải lại danh sách ghi nhận tạm.");
-      }
-      const [res, devicesRes, ticketsRes] = await Promise.all([
-        apiFetch(`/api/GhiNhanTam/theo-lich/${lichDayId}`, {}, S.token),
-        apiFetch("/api/ThietBi", {}, S.token),
-        apiFetch(`/api/Ticket/phong/${encodeURIComponent(g.maPhong)}`, {}, S.token)
-      ]);
-      setDsGhiNhanTam(prev => [...prev.filter(x => String(x.lichDayId) !== String(lichDayId)), ...unwrapData(res).map(x => ({ id:x.id, maGhiNhan:x.maGhiNhan || `GN${x.id}`, lichDayId:x.lichDayId ?? lichDayId, maLich:g.maLich, maPhong:g.maPhong, maThietBi:x.maThietBi, tenThietBi:x.tenThietBi, moTa:x.moTa, nguoiGhi:g.nguoiGhi, thoiGian:x.thoiGian, trangThai:x.trangThai }))]);
-      S.setDsThietBi(unwrapData(devicesRes).map(x => ({
-        maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai
-      })));
-      S.setDsTicket(unwrapData(ticketsRes).map(mapTicketFromApi));
-      notify(result?.message || `Đã tổng hợp ${g.maGhiNhan} thành Ticket.`, "ok");
-    } catch (e) { notify(e.message, "error"); }
-  };
 
   const pickDevice = (d) => {
 
@@ -733,7 +714,7 @@ function TeacherView(S) {
                       {!lessons.length && <div className="h-full min-h-[110px] rounded bg-stone-50/70"></div>}
                       {lessons.map((l) => {
                         const log = nk(l.maLich);
-                        return <div key={l.maLich} className={`rounded-md border p-2 text-xs ${l.maPhong === "AIBOT" ? "bg-violet-50 border-violet-300" : l.maPhong.startsWith("F") ? "bg-sky-50 border-sky-300" : "bg-green-50 border-green-300"}`}>
+                        return <div key={l.maLich} className={`rounded-md border p-2 text-xs ${["AIHUB", "AIBOT", "AIBOT"].includes(l.maPhong) ? "bg-violet-50 border-violet-300" : l.maPhong.startsWith("F") ? "bg-sky-50 border-sky-300" : "bg-green-50 border-green-300"}`}>
                           <div className="font-bold text-stone-800">{l.ca} · {l.batDau}–{l.ketThuc}</div>
                           <div className="font-semibold mt-1 break-words">{l.monHoc}</div>
                           <div className="mt-1">Phòng <b>{l.maPhong}</b></div>
@@ -866,7 +847,7 @@ function TeacherView(S) {
 
               </div>
 
-              {selLich && !laPhongFG(selLich.maPhong) && <div className="md:col-span-2"><Alert type="warn">Đổi phòng chỉ áp dụng giữa các phòng F/G; có thể đổi trong cùng cụm hoặc giữa hai cụm. Phòng AIBOT không thuộc quy trình đổi phòng này.</Alert></div>}
+              {selLich && !laPhongFG(selLich.maPhong) && <div className="md:col-span-2"><Alert type="warn">Đổi phòng chỉ áp dụng giữa các phòng F/G; có thể đổi trong cùng cụm hoặc giữa hai cụm. Các phòng AIHUB/AIBOT không thuộc quy trình đổi phòng F/G này.</Alert></div>}
               {mode === "kehoach" && selLich && selLich.trangThai === "Chưa check-in" && <div className="md:col-span-2"><Alert type="info">Có thể gửi đề xuất trước khi check-in. Yêu cầu sẽ ở trạng thái Chờ duyệt; lịch chỉ được cập nhật sau khi Quản lý LAB phê duyệt.</Alert></div>}
               <div className="md:col-span-2">
 
@@ -932,35 +913,19 @@ function TeacherView(S) {
           })()}
 
           <DeviceGrid devices={dsThietBi.filter((d) => d.maPhong === (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem))} onPick={pickDevice} />
-          <p className="text-xs text-stone-500 mt-3">{(dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem).startsWith("F") ? "Cụm F: chọn máy lỗi để ghi nhận tạm trong giờ học; cuối ca mới tổng hợp thành Ticket." : (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem).startsWith("G") ? "Cụm G: chọn thiết bị trong danh mục, mô tả sự cố và gửi Ticket chính thức." : "AIBOT: chọn thiết bị trong danh mục, mô tả sự cố và gửi Ticket chính thức."}</p>
+          <p className="text-xs text-stone-500 mt-3">{(dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem).startsWith("F") ? "Cụm F: chọn máy lỗi để ghi nhận tạm trong giờ học; cuối ca mới tổng hợp thành Ticket." : (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem).startsWith("G") ? "Cụm G: chọn thiết bị trong danh mục, mô tả sự cố và gửi Ticket chính thức." : "Phòng AI: chọn thiết bị trong danh mục, mô tả sự cố và gửi Ticket chính thức."} Danh sách giảng viên chỉ hiển thị Ticket đang xử lý; lịch sử chỉ Quản lý được xem.</p>
         </Card>
-        <Card title={`Ticket của phòng ${dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem}`} icon="ticket">
+        <Card title={`Ticket đang xử lý của phòng ${dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem}`} icon="ticket">
           {dsTicket.filter((t) => t.maPhong === (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem)).length === 0
             ? <Empty text={`Phòng ${dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem} hiện chưa có Ticket chính thức.`} />
             : <div className="space-y-2">{dsTicket.filter((t) => t.maPhong === (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem)).map((t) => (
                 <div key={t.maTicket} className="border rounded-md p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2"><b>{t.maTicket} · {t.maThietBi}</b><Badge text={t.trangThai} /></div>
+                  <div className="flex flex-wrap items-center justify-between gap-2"><b>{t.maTicket} · {t.maThietBi}</b><div className="flex items-center gap-2"><Badge text={t.trangThai} />{t.coTheHoanTac && <Btn small kind="amber" onClick={() => setTicketUndoTarget(t)}><I n="undo-2" c="mr-1" />Hoàn tác</Btn>}</div></div>{t.daSuDungQuyenHoanTac && <p className="text-xs text-amber-700 mt-2">Thiết bị đã từng được hoàn tác trước đó. Nếu vẫn tiếp tục gặp sự cố, vui lòng giữ nguyên Ticket và liên hệ trực tiếp bộ phận Kỹ thuật viên để được kiểm tra, hỗ trợ.</p>}
                   <p className="text-sm mt-1">{t.ghiChu || t.loiLoai}</p>
                   <p className="text-xs text-stone-500 mt-1">Người báo: {t.nguoiBao} · {t.thoiGianTao}</p>
                 </div>
               ))}</div>}
         </Card>
-        {(dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem).startsWith("F") && (
-          <Card title="Ghi nhận sự cố tạm theo ca – Cụm F" icon="clipboard-list">
-            <p className="text-sm text-stone-600 mb-3">Ghi nhận được lưu theo ca học trên hệ thống; chỉ chuyển cho kỹ thuật viên sau khi giảng viên tổng hợp và gửi Ticket.</p>
-            {!dsGhiNhanTam.filter((g) => g.maPhong === (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem)).length && <Empty text="Chưa có ghi nhận tạm nào." />}
-            <div className="space-y-2">
-              {dsGhiNhanTam.filter((g) => g.maPhong === (dsLich.find((l) => l.trangThai === "Đang diễn ra")?.maPhong || phongXem)).map((g) => (
-                <div key={g.maGhiNhan} className="border rounded-md p-3 flex flex-wrap justify-between gap-2">
-                  <div><b>{g.maGhiNhan} · {g.maThietBi}</b> <Badge text={g.trangThai} />
-                    <div className="text-sm">{g.moTa}</div><div className="text-xs text-stone-500">Ca: {g.maLich} · Người ghi: {g.nguoiGhi} · {g.thoiGian}</div>
-                  </div>
-                  {g.trangThai === "Chưa tổng hợp" && <Btn small onClick={() => guiTicketTongHop(g)}><I n="paper-plane" c="mr-1" />Tổng hợp & gửi Ticket</Btn>}
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
         </div>
       )}
 
@@ -1023,6 +988,17 @@ function TeacherView(S) {
 
 
 
+      {ticketUndoTarget && (
+        <Modal title="Xác nhận hoàn tác Ticket" onClose={() => setTicketUndoTarget(null)}>
+          <p className="text-sm text-stone-700">Bạn có chắc chắn muốn hoàn tác Ticket <b>{ticketUndoTarget.maTicket} – {ticketUndoTarget.maThietBi}</b> không?</p>
+          <Alert type="warn">Ticket sẽ bị xóa khỏi hệ thống và không thể khôi phục. Mỗi thiết bị chỉ được phép hoàn tác một lần.</Alert>
+          <div className="flex justify-end gap-2 mt-4">
+            <Btn kind="ghost" onClick={() => setTicketUndoTarget(null)}>Hủy</Btn>
+            <Btn kind="danger" onClick={() => hoanTacTicket(ticketUndoTarget)}>Có</Btn>
+          </div>
+        </Modal>
+      )}
+
       {tbChon && (
 
         <Modal title={`Báo lỗi thiết bị ${tbChon.maThietBi}`} onClose={() => setTbChon(null)}>
@@ -1060,13 +1036,14 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
   );
   const capNhatTrangThaiThietBi = async (device, trangThai) => {
     try {
-      await apiFetch(`/api/ThietBi/${encodeURIComponent(device.maThietBi)}/trang-thai`, {
+      if (!Number.isInteger(Number(device.id)) || Number(device.id) <= 0) throw new Error("Thiết bị chưa có Id từ database. Hãy tải lại dữ liệu.");
+      await apiFetch(`/api/ThietBi/${Number(device.id)}/trang-thai`, {
         method:"PUT", body:JSON.stringify({ trangThai })
       }, token);
       const [devicesRes, ticketsRes] = await Promise.all([
         apiFetch("/api/ThietBi", {}, token), apiFetch("/api/Ticket", {}, token)
       ]);
-      setDsThietBi(unwrapData(devicesRes).map(x => ({ maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai })));
+      setDsThietBi(unwrapData(devicesRes).map(x => ({ id:x.id, maThietBi:x.maThietBi, maPhong:x.maPhong, loai:x.loai, ten:x.ten, trangThai:x.trangThai })));
       setDsTicket(unwrapData(ticketsRes).map(mapTicketFromApi));
       // Không có trạng thái thiết bị đang chọn trong TechView; cập nhật danh sách là đủ.
       notify(`Đã cập nhật ${device.maThietBi}; trạng thái thiết bị và Ticket đã đồng bộ.`, "ok");
@@ -1087,15 +1064,15 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
     try {
       if (ticket.id == null) throw new Error("Ticket chưa có ID database.");
       await apiFetch(`/api/Ticket/${ticket.id}/trang-thai`, { method:"PUT", body:JSON.stringify({ trangThai }) }, token);
-      setDsTicket((p) => p.map((x) => x.maTicket === ticket.maTicket
+      setDsTicket((p) => p.map((x) => String(x.id) === String(ticket.id)
         ? { ...x, trangThai, thoiGianCapNhat: systemTime, ...(trangThai === "Đã khắc phục" ? { thoiGianHoanTat: systemTime } : {}) }
         : x));
     } catch (e) { notify(e.message, "error"); return; }
     if (trangThai === "Đang sửa chữa" || trangThai === "Báo cáo cấp trên") {
-      setDsThietBi((p) => p.map((d) => d.maThietBi === ticket.maThietBi ? { ...d, trangThai: "Đang bảo trì" } : d));
+      setDsThietBi((p) => p.map((d) => String(d.id) === String(ticket.thietBiId) ? { ...d, trangThai: "Đang bảo trì" } : d));
     }
     if (trangThai === "Đã khắc phục") {
-      setDsThietBi((p) => p.map((d) => d.maThietBi === ticket.maThietBi ? { ...d, trangThai: "Sẵn sàng" } : d));
+      setDsThietBi((p) => p.map((d) => String(d.id) === String(ticket.thietBiId) ? { ...d, trangThai: "Sẵn sàng" } : d));
     }
     notify(
       trangThai === "Đã khắc phục"
@@ -1186,19 +1163,25 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
       </Card>
 
       <Card title="Danh mục toàn bộ thiết bị các phòng LAB" icon="table-cells">
-        <p className="text-sm text-stone-600 mb-3">KTV chỉ được nhấn thiết bị màu đỏ (Hỏng) hoặc màu vàng (Đang bảo trì): Đỏ → Vàng (tiếp nhận xử lý) → Xanh (xác nhận khắc phục). Thiết bị màu xanh bị khóa thao tác. Mỗi lần cập nhật, hệ thống tự tạo/cập nhật/đóng Ticket tương ứng. Giảng viên và kỹ thuật viên cùng nhìn thấy 6 bộ KIT tại AIBOT.</p>
+        <p className="text-sm text-stone-600 mb-3">KTV chỉ được nhấn thiết bị màu đỏ (Hỏng) hoặc màu vàng (Đang bảo trì): Đỏ → Vàng (tiếp nhận xử lý) → Xanh (xác nhận khắc phục). Thiết bị màu xanh bị khóa thao tác. Mỗi lần cập nhật, hệ thống tự tạo/cập nhật/đóng Ticket tương ứng. Trung tâm AIBOT gồm hai phòng AIHUB và AIBOT, mỗi phòng có 3 bộ KIT riêng.</p>
         <Legend />
         {[
           { ten: "Cụm phòng F", phong: [...new Set(dsThietBi.filter((d) => /^F\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
           { ten: "Cụm phòng G", phong: [...new Set(dsThietBi.filter((d) => /^G\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
-          { ten: "Trung tâm AIBOT", phong: [...new Set(dsThietBi.filter((d) => d.maPhong === "AIBOT").map((d) => d.maPhong))] },
+          {
+            ten: "Trung tâm AIBOT",
+            phong: [...new Set(dsPhong.filter((p) => p.cum === "AI" || ["AIHUB", "AIBOT"].includes(p.maPhong)).map((p) => p.maPhong))]
+              .filter((maPhong) => ["AIHUB", "AIBOT"].includes(maPhong)).sort()
+          },
         ].map((cum) => (
           <div key={cum.ten} className="mb-6">
             <h4 className="font-semibold text-base mb-3">{cum.ten}</h4>
             {!cum.phong.length && <Empty text="Chưa có phòng hoặc thiết bị được khai báo trong cụm này." />}
             {cum.phong.map((p) => (
               <div key={p} className="mb-4 rounded-md border border-stone-200 p-3">
-                <h5 className="font-semibold text-sm mb-3">Phòng {p} · {dsThietBi.filter((d) => d.maPhong === p).length} thiết bị</h5>
+                <h5 className="font-semibold text-sm mb-1">Phòng {p} · {dsThietBi.filter((d) => d.maPhong === p).length} thiết bị</h5>
+                {p === "AIHUB" && <p className="text-xs text-stone-500 mb-3">Khu trưng bày & trải nghiệm AIBOT · Sức chứa 30</p>}
+                {p === "AIBOT" && <p className="text-xs text-stone-500 mb-3">Trung tâm nghiên cứu AIBOT · Sức chứa 80</p>}
                 <DeviceGrid
                   devices={dsThietBi.filter((d) => d.maPhong === p)}
                   onPick={chuyenMauThietBi}
@@ -1902,7 +1885,7 @@ function ManagerView(S) {
 
 
 /* ---------- Ket noi DntuLab.API ---------- */
-const API_BASE = "https://dntulab-api.onrender.com";
+const API_BASE = "http://localhost:5266";
 const apiFetch = async (path, options = {}, token = localStorage.getItem("dntulab_access_token")) => {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -2019,11 +2002,12 @@ const damBaoDuLichDemo = (current = [], apiSchedules = []) => {
 };
 
 const mapTicketFromApi = (x) => ({
-  id: x.id, maTicket: x.maTicket, maThietBi: x.maThietBi,
+  id: x.id, thietBiId: x.thietBiId, maTicket: x.maTicket, maThietBi: x.maThietBi,
   tenThietBi: x.tenThietBi, maPhong: x.maPhong, loaiLoi: x.loaiLoi, ghiChu: x.ghiChu || "",
   nguoiBao: x.tenNguoiBao, nguoiBaoId: x.nguoiBaoId, thoiGianTao: x.thoiGianTao,
   trangThai: x.trangThai, ktvXuLyId: x.ktvXuLyId,
-  thoiGianCapNhat: x.thoiGianCapNhat, thoiGianHoanTat: x.thoiGianHoanTat
+  thoiGianCapNhat: x.thoiGianCapNhat, thoiGianHoanTat: x.thoiGianHoanTat,
+  daSuDungQuyenHoanTac: !!x.daSuDungQuyenHoanTac, coTheHoanTac: !!x.coTheHoanTac
 });
 
 /* ---------- Ứng dụng chính ---------- */
@@ -2050,7 +2034,6 @@ function App() {
   const [dsTicket, setDsTicket] = useState([]);
   const [dsYeuCau, setDsYeuCau] = useState([]);
   const [dsThongBao, setDsThongBao] = useState([]);
-  const [dsGhiNhanTam, setDsGhiNhanTam] = useState([]);
   const [token, setToken] = useState(() => localStorage.getItem("dntulab_access_token") || "");
   const [currentUser, setCurrentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("dntulab_user") || "null"); } catch { return null; }
@@ -2086,10 +2069,11 @@ function App() {
         const loaiApi = String(x.loaiPhong || "").trim();
         const loaiPhong = ["PC", "BYOD", "Lab AI"].includes(loaiApi)
           ? loaiApi
-          : maPhong.startsWith("F") ? "PC" : maPhong.startsWith("G") ? "BYOD" : maPhong === "AIBOT" ? "Lab AI" : loaiApi;
-        return { maPhong, loaiPhong, sucChua: Number(x.sucChua) || (maPhong.startsWith("F") ? 50 : maPhong.startsWith("G") ? 60 : maPhong === "AIBOT" ? 80 : 0), cum: x.cum };
+          : maPhong.startsWith("F") ? "PC" : maPhong.startsWith("G") ? "BYOD" : ["AIHUB", "AIBOT", "AIBOT"].includes(maPhong) ? "Lab AI" : loaiApi;
+        const sucChuaMacDinh = maPhong === "AIHUB" ? 30 : maPhong === "AIBOT" || maPhong === "AIBOT" ? 80 : maPhong.startsWith("F") ? 40 : maPhong.startsWith("G") ? 65 : 0;
+        return { maPhong, loaiPhong, sucChua: Number(x.sucChua) || sucChuaMacDinh, cum: String(x.cum || "").trim().toUpperCase() };
       });
-      const apiDevices = unwrapData(devicesRes).map(x => ({ maThietBi: x.maThietBi, maPhong: x.maPhong, loai: x.loai, ten: x.ten, trangThai: x.trangThai }));
+      const apiDevices = unwrapData(devicesRes).map(x => ({ id:x.id, maThietBi: x.maThietBi, maPhong: x.maPhong, loai: x.loai, ten: x.ten, trangThai: x.trangThai }));
       // Danh sách thiết bị là dữ liệu thực từ database; không tự sinh thiết bị giả trên frontend.
       const devices = apiDevices;
       const schedules = unwrapData(schedulesRes).map(mapLichFromApi);
@@ -2104,7 +2088,6 @@ function App() {
       setDsThietBi(devices);
       setDsLich(schedules);
       setDsNhatKy(logs);
-      setDsGhiNhanTam([]);
       setDsThongBao([]);
       setDsYeuCau([]);
       setDsTicket([]);
@@ -2120,16 +2103,12 @@ function App() {
             gv:x.tenGiangVien || currentUser?.hoTen || "", phongCu:x.phongCu, phongMoi:x.phongMoi,
             lyDo:x.lyDo, loai:x.loai, trangThai:x.trangThai, thoiGian:x.thoiGianTao };
         }));
-        const activeSchedules = schedules.filter(x => x.trangThai === "Đang diễn ra" && x.id != null);
-        const tempResults = await Promise.all(activeSchedules.map(x =>
-          apiFetch(`/api/GhiNhanTam/theo-lich/${x.id}`, {}, activeToken).catch(() => ({ data: [] }))
-        ));
-        setDsGhiNhanTam(tempResults.flatMap((res, index) => unwrapData(res).map(x => ({
-          id:x.id, maGhiNhan:x.maGhiNhan || `GN${x.id}`, lichDayId:x.lichDayId,
-          maLich:activeSchedules[index].maLich, maPhong:activeSchedules[index].maPhong,
-          maThietBi:x.maThietBi, tenThietBi:x.tenThietBi, moTa:x.moTa,
-          thoiGian:x.thoiGian, trangThai:x.trangThai
-        }))));
+        const activeSchedule = schedules.find(x => x.trangThai === "Đang diễn ra" && x.maPhong);
+        if (activeSchedule) {
+          const roomTicketsRes = await apiFetch(`/api/Ticket/phong/${encodeURIComponent(activeSchedule.maPhong)}`, {}, activeToken);
+          setDsTicket(unwrapData(roomTicketsRes).map(mapTicketFromApi));
+        }
+
       }
       if (role === "KTV" || role === "QL") {
         const ticketsRes = await apiFetch("/api/Ticket", {}, activeToken);
@@ -2249,7 +2228,7 @@ function App() {
       );
     } catch (e) { notify(e.message || "Không thể Reset Demo.", "error"); }
   };
-  const S = { systemDate, dsPhong, dsThietBi, setDsThietBi, dsLich, setDsLich, dsNhatKy, setDsNhatKy, dsTicket, setDsTicket, dsYeuCau, setDsYeuCau, dsThongBao, setDsThongBao, dsGhiNhanTam, setDsGhiNhanTam, systemTime, notify, gv: currentUser?.hoTen || ACTORS.gv.ten, token, currentUser, loadApiData };
+  const S = { systemDate, dsPhong, dsThietBi, setDsThietBi, dsLich, setDsLich, dsNhatKy, setDsNhatKy, dsTicket, setDsTicket, dsYeuCau, setDsYeuCau, dsThongBao, setDsThongBao, systemTime, notify, gv: currentUser?.hoTen || ACTORS.gv.ten, token, currentUser, loadApiData };
 
   const toastTone = { ok: "bg-green-700", warn: "bg-amber-600", error: "bg-red-700", info: "bg-sky-700" }[toast ? toast.type : "ok"];
 
