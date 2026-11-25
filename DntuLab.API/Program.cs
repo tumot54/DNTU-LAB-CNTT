@@ -12,20 +12,20 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ======================================================
-// 1. CẤU HÌNH CORS CHO FRONTEND VERCEL
+// 1. CẤU HÌNH CORS
 // ======================================================
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("VercelFrontend", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy
-            .WithOrigins(
-                "https://dntu-lab.vercel.app",
-                "https://dntu-lab-cntt.vercel.app"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins(
+            "https://dntu-lab-cntt.vercel.app",
+            "http://localhost:5266",
+            "https://localhost:5266"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
@@ -70,14 +70,14 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<LabDbContext>(options =>
         options.UseNpgsql(
-    connectionString,
-    npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
-        maxRetryCount: 5,
-        maxRetryDelay: TimeSpan.FromSeconds(30),
-        errorCodesToAdd: null
-    )
-    )
-);
+            connectionString,
+            npgsqlOptions => npgsqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null
+            )
+        )
+    );
 }
 else
 {
@@ -135,8 +135,9 @@ var app = builder.Build();
 // 6. TẠO TÀI KHOẢN MẪU
 // ======================================================
 
-// Chỉ thực hiện Seeder khi cấu hình bật.
-// Chỉ bật khi database PostgreSQL đã được tạo schema và cần seed tài khoản mẫu.
+// Chỉ chạy Seeder khi Database:SeedOnStartup = true.
+// Chú ý: Không bật nếu ConnectionString đang trỏ đến
+// Neon Production và bạn không có nhu cầu seed dữ liệu.
 
 var seedEnabled = builder.Configuration.GetValue<bool>(
     "Database:SeedOnStartup");
@@ -162,7 +163,6 @@ if (seedEnabled)
                 VaiTro = Roles.GV,
                 MatKhau = "Gv@123456"
             },
-
             new
             {
                 TenDangNhap = "gv02",
@@ -170,7 +170,6 @@ if (seedEnabled)
                 VaiTro = Roles.GV,
                 MatKhau = "Gv@123456"
             },
-
             new
             {
                 TenDangNhap = "ktv01",
@@ -178,7 +177,6 @@ if (seedEnabled)
                 VaiTro = Roles.KTV,
                 MatKhau = "Ktv@123456"
             },
-
             new
             {
                 TenDangNhap = "ql01",
@@ -226,19 +224,18 @@ if (seedEnabled)
 }
 
 // ======================================================
-// 7. CONFIGURE HTTP REQUEST PIPELINE.WithOrigins("https://dntu-lab.vercel.app")
+// 7. CONFIGURE HTTP REQUEST PIPELINE
 // ======================================================
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Render sử dụng HTTPS ở lớp proxy phía trước.
-// Không chuyển hướng HTTP sang HTTPS tại ứng dụng.
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 // CORS phải đứng trước Authentication và Authorization.
-app.UseCors("VercelFrontend");
+// Sử dụng đúng tên Policy đã đăng ký ở phần 1.
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

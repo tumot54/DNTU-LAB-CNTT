@@ -1885,18 +1885,63 @@ function ManagerView(S) {
 
 
 /* ---------- Ket noi DntuLab.API ---------- */
-const API_BASE = "https://dntu-lab-cntt.onrender.com";
-const apiFetch = async (path, options = {}, token = localStorage.getItem("dntulab_access_token")) => {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const raw = await response.text();
-  let body = null;
-  try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
-  if (!response.ok) throw new Error(body?.message || body?.title || `API lỗi HTTP ${response.status}`);
-  return body;
+/* ---------- Ket noi DntuLab.API ---------- */
+
+// Tự động chọn Backend theo môi trường chạy
+const API_BASE = (() => {
+    const hostname = window.location.hostname;
+
+    // Chạy Frontend và Backend cùng ASP.NET Core local
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "";
+    }
+
+    // Chạy trên Vercel Production hoặc Preview
+    return "https://dntu-lab-cntt.onrender.com";
+})();
+
+const apiFetch = async (
+    path,
+    options = {},
+    token = localStorage.getItem("dntulab_access_token")
+) => {
+    const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers
+    });
+
+    const raw = await response.text();
+
+    let body = null;
+    try {
+        body = raw ? JSON.parse(raw) : null;
+    } catch {
+        body = raw;
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            body?.message || body?.title || `API lỗi HTTP ${response.status}`
+        );
+    }
+
+    return body;
 };
-const unwrapData = (x) => Array.isArray(x) ? x : (Array.isArray(x?.data) ? x.data : []);
+
+const unwrapData = (x) =>
+    Array.isArray(x)
+        ? x
+        : (Array.isArray(x?.data) ? x.data : []);
+
 const toUiDate = (value) => {
   if (!value) return "";
   const d = String(value).slice(0, 10).split("-");
