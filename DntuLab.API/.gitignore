@@ -1,13 +1,26 @@
-bin/
-obj/
+
+# .NET build
+**/bin/
+**/obj/
 .vs/
+
+# IDE
 *.user
 *.suo
+
+# Backup and database files
 *.bak
 *.trn
 *.mdf
 *.ldf
-appsettings.Production.json
-appsettings.Development.json
-appsettings.Local.json
-secrets.json
+
+# Environment configuration
+**/appsettings.Production.json
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
