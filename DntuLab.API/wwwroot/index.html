@@ -1169,13 +1169,10 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
           { ten: "Cụm phòng F", phong: [...new Set(dsThietBi.filter((d) => /^F\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
           { ten: "Cụm phòng G", phong: [...new Set(dsThietBi.filter((d) => /^G\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
           {
-  ten: "Trung tâm AIBOT",
-  phong: [...new Set(
-  dsPhong
-    .filter((p) => ["AIHUB", "AIBOT"].includes(p.maPhong))
-    .map((p) => p.maPhong)
-)].sort()
-},
+            ten: "Trung tâm AIBOT",
+            phong: [...new Set(dsPhong.filter((p) => p.cum === "AI" || ["AIHUB", "AIBOT"].includes(p.maPhong)).map((p) => p.maPhong))]
+              .filter((maPhong) => ["AIHUB", "AIBOT"].includes(maPhong)).sort()
+          },
         ].map((cum) => (
           <div key={cum.ten} className="mb-6">
             <h4 className="font-semibold text-base mb-3">{cum.ten}</h4>
@@ -1184,7 +1181,8 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
               <div key={p} className="mb-4 rounded-md border border-stone-200 p-3">
                 <h5 className="font-semibold text-sm mb-1">Phòng {p} · {dsThietBi.filter((d) => d.maPhong === p).length} thiết bị</h5>
                 {p === "AIHUB" && <p className="text-xs text-stone-500 mb-3">Khu trưng bày & trải nghiệm AIBOT · Sức chứa 30</p>}
-{p === "AIBOT" && <p className="text-xs text-stone-500 mb-3">Trung tâm nghiên cứu AIBOT · Sức chứa 80</p>}                <DeviceGrid
+                {p === "AIBOT" && <p className="text-xs text-stone-500 mb-3">Trung tâm nghiên cứu AIBOT · Sức chứa 80</p>}
+                <DeviceGrid
                   devices={dsThietBi.filter((d) => d.maPhong === p)}
                   onPick={chuyenMauThietBi}
                   restrictPickToFaulty
@@ -1887,29 +1885,63 @@ function ManagerView(S) {
 
 
 /* ---------- Ket noi DntuLab.API ---------- */
+/* ---------- Ket noi DntuLab.API ---------- */
 
+// Tự động chọn Backend theo môi trường chạy
 const API_BASE = (() => {
-  const hostname = window.location.hostname;
+    const hostname = window.location.hostname;
 
-  // Chạy Frontend và Backend cùng ASP.NET Core ở máy Local
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "";
-  }
+    // Chạy Frontend và Backend cùng ASP.NET Core local
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "";
+    }
 
-  // Production trên Vercel
-  return "https://dntu-lab-cntt.onrender.com";
+    // Chạy trên Vercel Production hoặc Preview
+    return "https://dntu-lab-cntt.onrender.com";
 })();
-const apiFetch = async (path, options = {}, token = localStorage.getItem("dntulab_access_token")) => {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const raw = await response.text();
-  let body = null;
-  try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
-  if (!response.ok) throw new Error(body?.message || body?.title || `API lỗi HTTP ${response.status}`);
-  return body;
+
+const apiFetch = async (
+    path,
+    options = {},
+    token = localStorage.getItem("dntulab_access_token")
+) => {
+    const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers
+    });
+
+    const raw = await response.text();
+
+    let body = null;
+    try {
+        body = raw ? JSON.parse(raw) : null;
+    } catch {
+        body = raw;
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            body?.message || body?.title || `API lỗi HTTP ${response.status}`
+        );
+    }
+
+    return body;
 };
-const unwrapData = (x) => Array.isArray(x) ? x : (Array.isArray(x?.data) ? x.data : []);
+
+const unwrapData = (x) =>
+    Array.isArray(x)
+        ? x
+        : (Array.isArray(x?.data) ? x.data : []);
+
 const toUiDate = (value) => {
   if (!value) return "";
   const d = String(value).slice(0, 10).split("-");
@@ -2083,8 +2115,7 @@ function App() {
         const loaiPhong = ["PC", "BYOD", "Lab AI", "CISCO"].includes(loaiApi)
           ? loaiApi
           : maPhong.startsWith("F") ? "PC" : maPhong.startsWith("G") ? "BYOD" : ["AIHUB", "AIBOT"].includes(maPhong) ? "Lab AI" : loaiApi;
-
-const sucChuaMacDinh = maPhong === "AIHUB" ? 30 : maPhong === "AIBOT" ? 80 : maPhong.startsWith("F") ? 40 : maPhong.startsWith("G") ? 65 : 0;
+        const sucChuaMacDinh = maPhong === "AIHUB" ? 30 : maPhong === "AIBOT" ? 80 : maPhong.startsWith("F") ? 40 : maPhong.startsWith("G") ? 65 : 0;
         return { maPhong, loaiPhong, sucChua: Number(x.sucChua) || sucChuaMacDinh, cum: String(x.cum || "").trim().toUpperCase() };
       });
       const apiDevices = unwrapData(devicesRes).map(x => ({ id:x.id, maThietBi: x.maThietBi, maPhong: x.maPhong, loai: x.loai, ten: x.ten, trangThai: x.trangThai }));
