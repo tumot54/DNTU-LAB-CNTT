@@ -210,7 +210,7 @@ const INIT_PHONG = [
   { maPhong: "F509", loaiPhong: "CISCO", sucChua: 40, cum: "F" },
   ...Array.from({ length: 4 }, (_, i) => ({ maPhong: `G${201 + i}`, loaiPhong: "BYOD", sucChua: 65, cum: "G" })),
   { maPhong: "AIHUB", loaiPhong: "Lab AI", sucChua: 30, cum: "AI" },
-  { maPhong: "AILAB", loaiPhong: "Lab AI", sucChua: 80, cum: "AI" },
+  { maPhong: "AIBOT", loaiPhong: "Lab AI", sucChua: 80, cum: "AI" },
 ];
 
 const INIT_THIETBI = [
@@ -224,7 +224,7 @@ const INIT_THIETBI = [
     ];
   }).flat(),
   ...genDevices("AIHUB", "AI-KIT", 3, "KIT", "Bộ Kit Robot & mô hình STEM"),
-  ...genDevices("AILAB", "AI-KIT", 3, "KIT", "Bộ Kit Robot & mô hình STEM"),
+  ...genDevices("AIBOT", "AI-KIT", 3, "KIT", "Bộ Kit Robot & mô hình STEM"),
 ];
 
 const INIT_LICH = [
@@ -232,7 +232,7 @@ const INIT_LICH = [
   { maLich: "L1", ngay: "12/10/2026", ca: "Ca 1", batDau: "07:00", ketThuc: "09:00", monHoc: "Lập trình Web API", maPhong: "F507", gv: "Trần Xuân Hoàng", tenDangNhapGV: "gv01", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
   { maLich: "L2", ngay: "12/10/2026", ca: "Ca 2", batDau: "09:30", ketThuc: "11:30", monHoc: "Cơ sở dữ liệu", maPhong: "G201", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
   { maLich: "L3", ngay: "12/10/2026", ca: "Ca 3", batDau: "13:00", ketThuc: "15:00", monHoc: "An toàn thông tin", maPhong: "F509", gv: "Trần Xuân Hoàng", tenDangNhapGV: "gv01", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
-  { maLich: "L4", ngay: "12/10/2026", ca: "Ca 4", batDau: "15:30", ketThuc: "17:30", monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AILAB", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
+  { maLich: "L4", ngay: "12/10/2026", ca: "Ca 4", batDau: "15:30", ketThuc: "17:30", monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AIBOT", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
   // Lich mau cu, khong phai lich chinh trong giai doan cap nhat.
   { maLich: "L5", ngay: "15/10/2026", ca: "Ca 1", batDau: "07:00", ketThuc: "09:00", monHoc: "Phát triển ứng dụng di động", maPhong: "F508", gv: "Trần Xuân Hoàng", tenDangNhapGV: "gv01", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
   { maLich: "L6", ngay: "15/10/2026", ca: "Ca 2", batDau: "09:30", ketThuc: "11:30", monHoc: "Mạng máy tính", maPhong: "G202", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", soTiet: 2, trangThai: "Chưa check-in", soBuoi: 1 },
@@ -714,7 +714,7 @@ function TeacherView(S) {
                       {!lessons.length && <div className="h-full min-h-[110px] rounded bg-stone-50/70"></div>}
                       {lessons.map((l) => {
                         const log = nk(l.maLich);
-                        return <div key={l.maLich} className={`rounded-md border p-2 text-xs ${["AIHUB", "AILAB", "AILAB"].includes(l.maPhong) ? "bg-violet-50 border-violet-300" : l.maPhong.startsWith("F") ? "bg-sky-50 border-sky-300" : "bg-green-50 border-green-300"}`}>
+                        return <div key={l.maLich} className={`rounded-md border p-2 text-xs ${["AIHUB", "AIBOT"].includes(l.maPhong) ? "bg-violet-50 border-violet-300" : l.maPhong.startsWith("F") ? "bg-sky-50 border-sky-300" : "bg-green-50 border-green-300"}`}>
                           <div className="font-bold text-stone-800">{l.ca} · {l.batDau}–{l.ketThuc}</div>
                           <div className="font-semibold mt-1 break-words">{l.monHoc}</div>
                           <div className="mt-1">Phòng <b>{l.maPhong}</b></div>
@@ -1169,10 +1169,13 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
           { ten: "Cụm phòng F", phong: [...new Set(dsThietBi.filter((d) => /^F\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
           { ten: "Cụm phòng G", phong: [...new Set(dsThietBi.filter((d) => /^G\d+/.test(d.maPhong)).map((d) => d.maPhong))].sort() },
           {
-            ten: "Trung tâm AIBOT",
-            phong: [...new Set(dsPhong.filter((p) => p.cum === "AI" || ["AIHUB", "AILAB"].includes(p.maPhong)).map((p) => p.maPhong))]
-              .filter((maPhong) => ["AIHUB", "AILAB"].includes(maPhong)).sort()
-          },
+  ten: "Trung tâm AIBOT",
+  phong: [...new Set(
+  dsPhong
+    .filter((p) => ["AIHUB", "AIBOT"].includes(p.maPhong))
+    .map((p) => p.maPhong)
+)].sort()
+},
         ].map((cum) => (
           <div key={cum.ten} className="mb-6">
             <h4 className="font-semibold text-base mb-3">{cum.ten}</h4>
@@ -1181,8 +1184,7 @@ function TechView({ dsTicket, setDsTicket, dsThietBi, setDsThietBi, dsPhong, dsL
               <div key={p} className="mb-4 rounded-md border border-stone-200 p-3">
                 <h5 className="font-semibold text-sm mb-1">Phòng {p} · {dsThietBi.filter((d) => d.maPhong === p).length} thiết bị</h5>
                 {p === "AIHUB" && <p className="text-xs text-stone-500 mb-3">Khu trưng bày & trải nghiệm AIBOT · Sức chứa 30</p>}
-                {p === "AILAB" && <p className="text-xs text-stone-500 mb-3">Trung tâm nghiên cứu AIBOT · Sức chứa 80</p>}
-                <DeviceGrid
+{p === "AIBOT" && <p className="text-xs text-stone-500 mb-3">Trung tâm nghiên cứu AIBOT · Sức chứa 80</p>}                <DeviceGrid
                   devices={dsThietBi.filter((d) => d.maPhong === p)}
                   onPick={chuyenMauThietBi}
                   restrictPickToFaulty
@@ -1885,63 +1887,29 @@ function ManagerView(S) {
 
 
 /* ---------- Ket noi DntuLab.API ---------- */
-/* ---------- Ket noi DntuLab.API ---------- */
 
-// Tự động chọn Backend theo môi trường chạy
 const API_BASE = (() => {
-    const hostname = window.location.hostname;
+  const hostname = window.location.hostname;
 
-    // Chạy Frontend và Backend cùng ASP.NET Core local
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-        return "";
-    }
+  // Chạy Frontend và Backend cùng ASP.NET Core ở máy Local
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "";
+  }
 
-    // Chạy trên Vercel Production hoặc Preview
-    return "https://dntu-lab-cntt.onrender.com";
+  // Production trên Vercel
+  return "https://dntu-lab-cntt.onrender.com";
 })();
-
-const apiFetch = async (
-    path,
-    options = {},
-    token = localStorage.getItem("dntulab_access_token")
-) => {
-    const headers = {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-    };
-
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers
-    });
-
-    const raw = await response.text();
-
-    let body = null;
-    try {
-        body = raw ? JSON.parse(raw) : null;
-    } catch {
-        body = raw;
-    }
-
-    if (!response.ok) {
-        throw new Error(
-            body?.message || body?.title || `API lỗi HTTP ${response.status}`
-        );
-    }
-
-    return body;
+const apiFetch = async (path, options = {}, token = localStorage.getItem("dntulab_access_token")) => {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const raw = await response.text();
+  let body = null;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = raw; }
+  if (!response.ok) throw new Error(body?.message || body?.title || `API lỗi HTTP ${response.status}`);
+  return body;
 };
-
-const unwrapData = (x) =>
-    Array.isArray(x)
-        ? x
-        : (Array.isArray(x?.data) ? x.data : []);
-
+const unwrapData = (x) => Array.isArray(x) ? x : (Array.isArray(x?.data) ? x.data : []);
 const toUiDate = (value) => {
   if (!value) return "";
   const d = String(value).slice(0, 10).split("-");
@@ -1989,7 +1957,7 @@ const taoLichDemoDenCuoiThang11 = () => {
     { ca: "Ca 1", batDau: "07:00", ketThuc: "09:00", gv: "Trần Xuân Hoàng", tenDangNhapGV: "gv01", monHoc: "Lập trình Web API", maPhong: "F507" },
     { ca: "Ca 2", batDau: "09:30", ketThuc: "11:30", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", monHoc: "Cơ sở dữ liệu", maPhong: "G201" },
     { ca: "Ca 3", batDau: "13:00", ketThuc: "15:00", gv: "Trần Xuân Hoàng", tenDangNhapGV: "gv01", monHoc: "An toàn thông tin", maPhong: "F509" },
-    { ca: "Ca 4", batDau: "15:30", ketThuc: "17:30", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AILAB" },
+    { ca: "Ca 4", batDau: "15:30", ketThuc: "17:30", gv: "Nguyễn Định Khiêm", tenDangNhapGV: "gv02", monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AIBOT" },
   ];
   const courses = {
     gv01: [
@@ -1997,11 +1965,11 @@ const taoLichDemoDenCuoiThang11 = () => {
       { monHoc: "An toàn thông tin", maPhong: "F509" },
       { monHoc: "Phát triển ứng dụng di động", maPhong: "F508" },
       { monHoc: "Học máy ứng dụng", maPhong: "G203" },
-      { monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AILAB" },
+      { monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AIBOT" },
     ],
     gv02: [
       { monHoc: "Cơ sở dữ liệu", maPhong: "G201" },
-      { monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AILAB" },
+      { monHoc: "Trí tuệ nhân tạo và Robotics", maPhong: "AIBOT" },
       { monHoc: "Mạng máy tính", maPhong: "G202" },
       { monHoc: "Cơ sở dữ liệu nâng cao", maPhong: "F508" },
       { monHoc: "Phân tích thiết kế hệ thống", maPhong: "G204" },
@@ -2114,8 +2082,9 @@ function App() {
         const loaiApi = String(x.loaiPhong || "").trim();
         const loaiPhong = ["PC", "BYOD", "Lab AI", "CISCO"].includes(loaiApi)
           ? loaiApi
-          : maPhong.startsWith("F") ? "PC" : maPhong.startsWith("G") ? "BYOD" : ["AIHUB", "AILAB", "AILAB"].includes(maPhong) ? "Lab AI" : loaiApi;
-        const sucChuaMacDinh = maPhong === "AIHUB" ? 30 : maPhong === "AILAB" || maPhong === "AILAB" ? 80 : maPhong.startsWith("F") ? 40 : maPhong.startsWith("G") ? 65 : 0;
+          : maPhong.startsWith("F") ? "PC" : maPhong.startsWith("G") ? "BYOD" : ["AIHUB", "AIBOT"].includes(maPhong) ? "Lab AI" : loaiApi;
+
+const sucChuaMacDinh = maPhong === "AIHUB" ? 30 : maPhong === "AIBOT" ? 80 : maPhong.startsWith("F") ? 40 : maPhong.startsWith("G") ? 65 : 0;
         return { maPhong, loaiPhong, sucChua: Number(x.sucChua) || sucChuaMacDinh, cum: String(x.cum || "").trim().toUpperCase() };
       });
       const apiDevices = unwrapData(devicesRes).map(x => ({ id:x.id, maThietBi: x.maThietBi, maPhong: x.maPhong, loai: x.loai, ten: x.ten, trangThai: x.trangThai }));
