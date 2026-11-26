@@ -35,7 +35,7 @@ public class Phong
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     [StringLength(20)]
-    public string MaPhong { get; set; } = null!;          // F507, G201, AIHUB, AILAB...
+    public string MaPhong { get; set; } = null!;          // F507, G201, AIHUB, AIBOT...
 
     [Required, StringLength(20)]
     public string LoaiPhong { get; set; } = null!;        // PC | BYOD | Lab AI | CISCO
